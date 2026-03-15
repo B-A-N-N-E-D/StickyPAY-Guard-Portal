@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, LogOut, Coins, History } from 'lucide-react';
 
-export default function GuardHeader({ guard, credits, onSignOut, onShowHistory, activeTab, setActiveTab }) {
+export default function GuardHeader({ guard, credits, onSignOut, activeTab, setActiveTab }) {
   return (
     <div className="bg-card border-b border-border px-4 py-3">
       {/* StickyPAY Logo Row */}

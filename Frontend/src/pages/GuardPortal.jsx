@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import { findOrder, updateOrder, updateGuard } from '../components/localStore';
+
+import { updateGuard } from '../components/localStore';
 import GuardSignIn from '../components/guard/GuardSignIn';
 import GuardHeader from '../components/guard/GuardHeader';
 import CameraScanner from '../components/guard/CameraScanner';
@@ -17,42 +18,87 @@ export default function GuardPortal() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('scan');
+  const successSound = useMemo(
+    () => (typeof Audio !== 'undefined' ? new Audio('/success.mp3') : null),
+    []
+  );
+  const failSound = useMemo(
+    () => (typeof Audio !== 'undefined' ? new Audio('/fail.mp3') : null),
+    []
+  );
 
-  const lookup = (code) => {
+  useEffect(() => {
+    if (!result) return;
+
+    if (result.error) {
+      if (failSound) {
+        failSound.currentTime = 0;
+        failSound.play().catch(() => {});
+      }
+      return;
+    }
+
+    if (successSound) {
+      successSound.currentTime = 0;
+      successSound.play().catch(() => {});
+    }
+  }, [result, successSound, failSound]);
+
+  const lookup = async (code) => {
+
     const trimmed = (code || inputCode).trim();
     if (!trimmed) return;
+
     setLoading(true);
 
-    // Simulate slight async feel
-    setTimeout(() => {
-      const order = findOrder(trimmed);
+    try {
+      // @ts-ignore
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/verify/${trimmed}`
+      );
 
-      if (!order) {
-        setResult({ error: 'No order found for this QR / Transaction ID.' });
+      const data = await res.json();
+
+      if (!data.valid) {
+        setResult({ error: data.message || "Invalid receipt" });
         setLoading(false);
         return;
       }
 
-      if (order.status === 'verified') {
-        setResult({ order, alreadyVerified: true });
-        setLoading(false);
-        return;
-      }
-
-      const now = new Date().toISOString();
-      const updated = updateOrder(order.id, { status: 'verified', verified_date: now });
-
-      // Deduct 1 credit, increment total_verified
+      // Deduct guard credits
       if (guard) {
         const newCredits = Math.max(0, (guard.credits ?? 100) - 1);
         const newTotal = (guard.total_verified ?? 0) + 1;
-        updateGuard(guard.id, { credits: newCredits, total_verified: newTotal });
-        setGuard(prev => ({ ...prev, credits: newCredits, total_verified: newTotal }));
+
+        updateGuard(guard.id, {
+          credits: newCredits,
+          total_verified: newTotal
+        });
+
+        setGuard(prev => ({
+          ...prev,
+          credits: newCredits,
+          total_verified: newTotal
+        }));
       }
 
-      setResult({ order: updated });
-      setLoading(false);
-    }, 300);
+      setResult({
+        order: {
+          id: data.order_id,
+          total_amount: data.total,
+          created_date: data.time
+        }
+      });
+
+    } catch (err) {
+
+      setResult({
+        error: "Server verification failed"
+      });
+
+    }
+
+    setLoading(false);
   };
 
   const reset = () => {
@@ -61,8 +107,15 @@ export default function GuardPortal() {
   };
 
   const handleCodeDetected = (code) => {
+
+    if (loading) return; // prevent double scan
+
     setInputCode(code);
     lookup(code);
+
+    setTimeout(() => {
+      reset();
+    }, 2000);
   };
 
   const handleSignOut = () => {

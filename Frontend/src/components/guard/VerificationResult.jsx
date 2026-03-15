@@ -1,30 +1,43 @@
 import React from 'react';
-import { CheckCircle2, XCircle, AlertCircle, Package, RefreshCw } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, Package, RefreshCw, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
-export default function VerificationResult({ result, onReset }) {
-  if (!result) return null;
 
-  if (result.error) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -10 }}
-        className="bg-destructive/10 border border-destructive/30 rounded-2xl p-5 flex items-start gap-3"
-      >
-        <XCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <p className="font-bold text-destructive">Not Found</p>
-          <p className="text-muted-foreground text-sm mt-1">{result.error}</p>
-        </div>
-        <button onClick={onReset} className="text-muted-foreground hover:text-foreground transition-colors">
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </motion.div>
-    );
-  }
+
+export default function VerificationResult({ result, onReset }) {
+  // FULL SCREEN RESULT OVERLAY
+if (result.order && !result.alreadyVerified) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 bg-green-600 flex items-center justify-center z-50"
+    >
+      <div className="text-center text-white space-y-4">
+        <CheckCircle className="w-32 h-32 mx-auto" />
+        <h1 className="text-5xl font-bold">VERIFIED</h1>
+        <p className="text-xl">Payment Confirmed</p>
+      </div>
+    </motion.div>
+  );
+}
+
+if (result.error) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 bg-red-600 flex items-center justify-center z-50"
+    >
+      <div className="text-center text-white space-y-4">
+        <XCircle className="w-32 h-32 mx-auto" />
+        <h1 className="text-5xl font-bold">INVALID</h1>
+        <p className="text-lg">{result.error}</p>
+      </div>
+    </motion.div>
+  );
+}
 
   if (result.alreadyVerified) {
     return (
