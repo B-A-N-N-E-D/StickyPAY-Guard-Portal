@@ -1,0 +1,14 @@
+{
+  "name": "stickypay-guard-portal",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "frontend": "cd Frontend && npm run dev",
+    "backend": "cd Backend && npm start",
+    "install-all": "npm install && cd Frontend && npm install && cd ../Backend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
