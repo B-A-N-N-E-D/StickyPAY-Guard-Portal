@@ -32,18 +32,33 @@ export default function GuardPortal() {
   useEffect(() => {
     if (!result) return;
 
+    // ❌ ERROR CASE
     if (result.error) {
+      // 🔊 sound
       if (failSound) {
         failSound.currentTime = 0;
         failSound.play().catch(() => {});
       }
+
+      // 📳 vibration (error pattern)
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
       return;
     }
 
+    // ✅ SUCCESS CASE
     if (successSound) {
       successSound.currentTime = 0;
       successSound.play().catch(() => {});
     }
+
+    // 📳 vibration (success pattern)
+    if (navigator.vibrate) {
+      navigator.vibrate(200);
+    }
+
   }, [result, successSound, failSound]);
 
   const reset = () => {
