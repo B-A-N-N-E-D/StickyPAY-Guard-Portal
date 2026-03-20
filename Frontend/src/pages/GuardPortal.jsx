@@ -27,6 +27,8 @@ export default function GuardPortal() {
     []
   );
 
+  
+
   useEffect(() => {
     if (!result) return;
 
@@ -44,78 +46,33 @@ export default function GuardPortal() {
     }
   }, [result, successSound, failSound]);
 
-  const lookup = async (code) => {
-
-    const trimmed = (code || inputCode).trim();
-    if (!trimmed) return;
-
-    setLoading(true);
-
-    try {
-      // @ts-ignore
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/verify/${trimmed}`
-      );
-
-      const data = await res.json();
-
-      if (!data.valid) {
-        setResult({ error: data.message || "Invalid receipt" });
-        setLoading(false);
-        return;
-      }
-
-      // Deduct guard credits
-      if (guard) {
-        const newCredits = Math.max(0, (guard.credits ?? 100) - 1);
-        const newTotal = (guard.total_verified ?? 0) + 1;
-
-        updateGuard(guard.id, {
-          credits: newCredits,
-          total_verified: newTotal
-        });
-
-        setGuard(prev => ({
-          ...prev,
-          credits: newCredits,
-          total_verified: newTotal
-        }));
-      }
-
-      setResult({
-        order: {
-          id: data.order_id,
-          total_amount: data.total,
-          created_date: data.time
-        }
-      });
-
-    } catch (err) {
-
-      setResult({
-        error: "Server verification failed"
-      });
-
-    }
-
-    setLoading(false);
-  };
-
   const reset = () => {
     setResult(null);
     setInputCode('');
   };
 
-  const handleCodeDetected = (code) => {
+  const verifyCode = async (code) => {
+    if (!code) return;
 
-    if (loading) return; // prevent double scan
+    setLoading(true);
 
-    setInputCode(code);
-    lookup(code);
+    try {
+      const res = await fetch("http://localhost:5000/api/orders/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ code })
+      });
 
-    setTimeout(() => {
-      reset();
-    }, 2000);
+      const data = await res.json();
+      setResult(data);
+
+    } catch (err) {
+      setResult({ error: "Server error" });
+    }
+
+    setLoading(false);
   };
 
   const handleSignOut = () => {
@@ -146,13 +103,18 @@ export default function GuardPortal() {
         {activeTab === 'scan' ? (
           <>
             <CreditsBar credits={guard?.credits ?? 0} totalVerified={guard?.total_verified ?? 0} />
-            <CameraScanner onCodeDetected={handleCodeDetected} />
+            <CameraScanner onCodeDetected={verifyCode} />
             <ManualInput
+              inputCode={inputCode}
+              setInputCode={setInputCode}
+              onVerify={() => verifyCode(inputCode)}
+              onClearResult={() => setResult(null)}
+            />
               inputCode={inputCode}
               setInputCode={setInputCode}
               onVerify={() => lookup()}
               onClearResult={() => setResult(null)}
-            />
+
 
             {loading && (
               <motion.div

@@ -51,7 +51,7 @@ export default function CameraScanner({ onCodeDetected }) {
         },
         (decodedText) => {
           stopCamera();
-          onCodeDetected(decodedText);
+          onCodeDetected(decodedText); // 🔥 THIS IS IMPORTANT
         },
         () => {}
       );
