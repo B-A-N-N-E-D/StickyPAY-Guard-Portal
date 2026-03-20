@@ -25,6 +25,22 @@ export const createOrder = async (req, res) => {
   }
 };
 
+export const getOrders = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*");
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 export const verifyOrder = async (req, res) => {
   try {
     const { code } = req.body; // scanned QR or txn id
