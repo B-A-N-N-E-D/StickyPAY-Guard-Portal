@@ -57,7 +57,9 @@ export default function GuardPortal() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/orders/verify", {
+      const API_URL = "https://your-backend.onrender.com";
+
+      const res = await fetch(`${API_URL}/api/orders/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -103,7 +105,13 @@ export default function GuardPortal() {
         {activeTab === 'scan' ? (
           <>
             <CreditsBar credits={guard?.credits ?? 0} totalVerified={guard?.total_verified ?? 0} />
-            <CameraScanner onCodeDetected={verifyCode} />
+            
+            <CameraScanner
+              onCodeDetected={(code) => {
+                setInputCode(code);
+                verifyCode(code);
+              }}
+            />
 
             <ManualInput
               inputCode={inputCode}
