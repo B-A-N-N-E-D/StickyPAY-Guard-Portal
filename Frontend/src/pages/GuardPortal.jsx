@@ -68,7 +68,7 @@ export default function GuardPortal() {
       const data = await res.json();
       setResult(data);
 
-    } catch (err) {
+    } catch {
       setResult({ error: "Server error" });
     }
 
@@ -104,16 +104,13 @@ export default function GuardPortal() {
           <>
             <CreditsBar credits={guard?.credits ?? 0} totalVerified={guard?.total_verified ?? 0} />
             <CameraScanner onCodeDetected={verifyCode} />
+
             <ManualInput
               inputCode={inputCode}
               setInputCode={setInputCode}
               onVerify={() => verifyCode(inputCode)}
               onClearResult={() => setResult(null)}
             />
-              inputCode={inputCode}
-              setInputCode={setInputCode}
-              onVerify={() => lookup()}
-              onClearResult={() => setResult(null)}
 
 
             {loading && (

@@ -7,5 +7,6 @@ const router = express.Router();
 router.get("/", getOrders);
 router.post("/", createOrder);
 router.post("/verify", verifyOrder);
+router.post("/verify", verifyOrder);
 
 export default router;
