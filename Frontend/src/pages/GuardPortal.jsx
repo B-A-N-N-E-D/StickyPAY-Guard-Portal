@@ -13,6 +13,7 @@ import CreditsBar from '../components/guard/CreditsBar';
 import OrderHistory from '../components/guard/OrderHistory';
 
 export default function GuardPortal() {
+  const API_URL = "https://stickypay-guard-portal.onrender.com";
   const [guard, setGuard] = useState(null);
   const [inputCode, setInputCode] = useState('');
   const [result, setResult] = useState(null);
@@ -26,6 +27,7 @@ export default function GuardPortal() {
     () => (typeof Audio !== 'undefined' ? new Audio('/fail.mp3') : null),
     []
   );
+  const token = localStorage.getItem("token");
 
   
 
@@ -47,6 +49,8 @@ export default function GuardPortal() {
     }
   }, []);
 
+  
+
   const reset = () => {
     setResult(null);
     setInputCode('');
@@ -56,13 +60,12 @@ export default function GuardPortal() {
     if (!code) return;
 
     setLoading(true);
-  
+
     try {
-      const API_URL = "https://stickypay-guard-portal.onrender.com";
+      const token = localStorage.getItem("token");
 
       let cleanCode = code.trim();
 
-      // handle URL QR
       if (cleanCode.includes("/")) {
         cleanCode = cleanCode.split("/").pop();
       }
@@ -71,8 +74,9 @@ export default function GuardPortal() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ code: cleanCode }), // ✅ FIXED
+        body: JSON.stringify({ code: cleanCode }),
       });
 
       if (!res.ok) {

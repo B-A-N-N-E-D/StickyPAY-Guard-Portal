@@ -1,12 +1,9 @@
+import jwt from "jsonwebtoken";
 import { supabase } from "../config/supabase.js";
 
 export const guardLogin = async (req, res) => {
   try {
     const { guard_id, pin } = req.body;
-
-    if (!guard_id || !pin) {
-      return res.status(400).json({ error: "Missing credentials" });
-    }
 
     const { data, error } = await supabase
       .from("guards")
@@ -16,16 +13,23 @@ export const guardLogin = async (req, res) => {
       .single();
 
     if (error || !data) {
-      return res.status(401).json({ error: "Invalid Guard ID or PIN" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
+
+    // 🔥 CREATE TOKEN
+    const token = jwt.sign(
+      { guard_id: data.guard_id, id: data.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
     res.json({
       success: true,
-      guard: data,
+      token,
+      guard: data
     });
 
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
     res.status(500).json({ error: "Server error" });
   }
 };

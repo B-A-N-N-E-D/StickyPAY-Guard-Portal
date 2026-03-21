@@ -9,7 +9,7 @@ export const protect = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    req.guard = decoded;
     next();
   } catch {
     return res.status(401).json({ error: "Invalid token" });

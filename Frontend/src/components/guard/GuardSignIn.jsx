@@ -47,6 +47,7 @@ export default function GuardSignIn({ onSignIn }) {
 
       // ✅ Save session
       localStorage.setItem("guard", JSON.stringify(data.guard));
+      localStorage.setItem("token", data.token);
 
       onSignIn(data.guard);
 

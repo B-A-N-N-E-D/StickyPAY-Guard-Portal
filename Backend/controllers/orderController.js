@@ -45,25 +45,14 @@ export const verifyOrder = async (req, res) => {
   try {
     const { code } = req.body;
 
-    if (!code) {
-      return res.json({ error: "No code provided" });
-    }
-
-    console.log("Received QR:", code); // 🔥 DEBUG
-
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("orders")
       .select("*")
-      .eq("qr_code", code.trim()) // 🔥 IMPORTANT
-      .maybeSingle();
-
-    if (error) {
-      console.error("Supabase error:", error);
-      return res.json({ error: "Database error" });
-    }
+      .eq("qr_code", code)
+      .single();
 
     if (!data) {
-      return res.json({ error: "Invalid QR Code" });
+      return res.json({ error: "Invalid QR" });
     }
 
     if (data.verified) {
@@ -75,17 +64,14 @@ export const verifyOrder = async (req, res) => {
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
+        verified_by: req.guard.id // 🔥 TRACK GUARD
       })
       .eq("order_id", data.order_id);
 
-    return res.json({
-      success: true,
-      order: data,
-    });
+    res.json({ success: true, order: data });
 
-  } catch (err) {
-    console.error("SERVER ERROR:", err);
-    return res.json({ error: "Server error" });
+  } catch {
+    res.status(500).json({ error: "Server error" });
   }
 };
 
