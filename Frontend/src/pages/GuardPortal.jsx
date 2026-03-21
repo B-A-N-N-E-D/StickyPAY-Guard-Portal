@@ -93,27 +93,17 @@ export default function GuardPortal() {
 
   const handleSignOut = async () => {
     try {
-      const API_URL = "https://stickypay-guard-portal.onrender.com";
-
-      // 🔥 OPTIONAL: update guard status in DB
       await fetch(`${API_URL}/api/guard/logout`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          guard_id: guard?.guard_id,
-        }),
+        body: JSON.stringify({ guard_id: guard.guard_id })
       });
+    } catch {}
 
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-
-    // ✅ Clear session
     localStorage.removeItem("guard");
 
-    // ✅ Reset UI
     setGuard(null);
     setResult(null);
     setInputCode('');

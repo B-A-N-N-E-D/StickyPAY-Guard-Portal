@@ -27,28 +27,32 @@ export default function GuardSignIn({ onSignIn }) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          guard_id: guardId, // 🔥 match backend
+          guard_id: guardId,
           pin: pin
         })
       });
 
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Server response:", text);
+        throw new Error("Login API failed");
+      }
+
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-        setError(data.error || "Login failed");
-        setLoading(false);
+      if (data.error) {
+        setError(data.error);
         return;
       }
 
       // ✅ Save session
       localStorage.setItem("guard", JSON.stringify(data.guard));
 
-      // ✅ Send to parent
       onSignIn(data.guard);
 
     } catch (err) {
       console.error(err);
-      setError("Server error. Try again.");
+      setError("Server error. Check backend.");
     }
 
     setLoading(false);
