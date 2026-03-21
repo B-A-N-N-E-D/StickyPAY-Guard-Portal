@@ -11,51 +11,67 @@ export default function CameraScanner({ onCodeDetected }) {
   const trackRef = useRef(null);
 
   const startCamera = async () => {
-    if (scannerRef.current) return; // 🚫 prevent multiple instances
+    if (scannerRef.current) return;
 
     setIsOpen(true);
     setError("");
 
-    const scanner = new Html5Qrcode("qr-reader");
-    scannerRef.current = scanner;
+    // ⏳ WAIT for React to render the div
+    setTimeout(async () => {
+      const reader = document.getElementById("qr-reader");
 
-    try {
-      await scanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        (decodedText) => {
-          if (navigator.vibrate) {
-            navigator.vibrate(100);
-          }
+      if (!reader) {
+        setError("Scanner UI not ready");
+        return;
+      }
 
-          stopCamera();
-          onCodeDetected(decodedText);
-        },
-        () => {}
-      );
+      const scanner = new Html5Qrcode("qr-reader");
+      scannerRef.current = scanner;
 
-      // ✅ Wait for video properly (NOT random timeout)
-      setTimeout(() => {
-        const video = document.querySelector("#qr-reader video");
+      try {
+        // ✅ Ask permission first
+        await navigator.mediaDevices.getUserMedia({ video: true });
 
-        if (video && video instanceof HTMLVideoElement) {
-          const stream = video.srcObject;
+        const devices = await Html5Qrcode.getCameras();
 
-          if (stream && stream instanceof MediaStream) {
-            const track = stream.getVideoTracks()[0];
-            trackRef.current = track;
-          }
+        if (!devices || devices.length === 0) {
+          setError("No camera found");
+          return;
         }
-      }, 800);
 
-    } catch (err) {
-      console.error(err);
-      setError("Camera error or permission denied");
-      scannerRef.current = null;
-    }
+        console.log("Cameras:", devices);
+
+        // 🔥 Pick best camera
+        const backCamera = devices.find(d =>
+          d.label.toLowerCase().includes("back") ||
+          d.label.toLowerCase().includes("rear")
+        );
+
+        const cameraId = backCamera ? backCamera.id : devices[0].id;
+
+        await scanner.start(
+          cameraId,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            if (navigator.vibrate) navigator.vibrate(100);
+
+            stopCamera();
+            onCodeDetected(decodedText);
+          },
+          (err) => {
+            console.log("Scan error:", err);
+          }
+        );
+
+      } catch (err) {
+        console.error("CAMERA ERROR:", err);
+        setError("Camera failed: " + err.message);
+        scannerRef.current = null;
+      }
+    }, 300); // 🔥 IMPORTANT delay
   };
 
   const stopCamera = async () => {
