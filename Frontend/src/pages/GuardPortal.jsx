@@ -56,11 +56,10 @@ export default function GuardPortal() {
     if (!code) return;
 
     setLoading(true);
-
+  
     try {
       const API_URL = "https://stickypay-guard-portal.onrender.com";
 
-      // 🔥 Extract orderId from QR
       let cleanCode = code.trim();
 
       // handle URL QR
@@ -68,17 +67,17 @@ export default function GuardPortal() {
         cleanCode = cleanCode.split("/").pop();
       }
 
-      const res = await fetch(`${API_URL}/api/guard/login`, {
+      const res = await fetch(`${API_URL}/api/orders/verify`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guard_id: guardId, pin }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: cleanCode }), // ✅ FIXED
       });
 
       if (!res.ok) {
-        throw new Error("API not found or server error");
+        throw new Error("API error");
       }
-
-      const data = await res.json();
 
       const data = await res.json();
       setResult(data);
@@ -93,14 +92,21 @@ export default function GuardPortal() {
 
   const handleSignOut = async () => {
     try {
+      const API_URL = "https://stickypay-guard-portal.onrender.com";
+
       await fetch(`${API_URL}/api/guard/logout`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ guard_id: guard.guard_id })
+        body: JSON.stringify({
+          guard_id: guard?.guard_id,
+        }),
       });
-    } catch {}
+
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
 
     localStorage.removeItem("guard");
 
