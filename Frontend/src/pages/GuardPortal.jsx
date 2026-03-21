@@ -72,20 +72,28 @@ export default function GuardPortal() {
     setLoading(true);
 
     try {
-      const API_URL = "https://your-backend.onrender.com";
+      const API_URL = "https://your-actual-backend-url.onrender.com";
+
+      // 🔥 Extract orderId from QR
+      let orderId = code;
+  
+      if (code.includes("orderId:")) {
+      orderId = code.split("orderId:")[1];
+      }
 
       const res = await fetch(`${API_URL}/api/orders/verify`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ orderId }), // ✅ IMPORTANT CHANGE
       });
 
       const data = await res.json();
       setResult(data);
 
-    } catch {
+    } catch (err) {
+      console.error(err);
       setResult({ error: "Server error" });
     }
 

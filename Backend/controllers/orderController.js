@@ -43,35 +43,37 @@ export const getOrders = async (req, res) => {
 
 export const verifyOrder = async (req, res) => {
   try {
-    const { code } = req.body; // scanned QR or txn id
+    const { code } = req.body;
 
     const { data, error } = await supabase
       .from("orders")
       .select("*")
-      .or(`qr_code.eq.${code},transaction_id.eq.${code}`)
+      .eq("qr_code", code) // 🔥 MATCH QR CODE
       .single();
 
     if (error || !data) {
-      return res.json({ error: "Invalid QR / Transaction ID" });
+      return res.json({ error: "Invalid QR Code" });
     }
 
     if (data.verified) {
-      return res.json({ alreadyVerified: true, order: data });
+      return res.json({ error: "Already used" });
     }
 
-    // ✅ Update as verified
-    const { error: updateError } = await supabase
+    // ✅ Mark as verified
+    await supabase
       .from("orders")
-      .update({ verified: true })
-      .eq("id", data.id);
+      .update({
+        verified: true,
+        verified_at: new Date().toISOString()
+      })
+      .eq("order_id", data.order_id);
 
-    if (updateError) {
-      return res.status(500).json(updateError);
-    }
-
-    return res.json({ order: data });
+    res.json({
+      success: true,
+      order: data,
+    });
 
   } catch (err) {
-    res.status(500).json(err);
+    res.status(500).json({ error: "Server error" });
   }
 };
