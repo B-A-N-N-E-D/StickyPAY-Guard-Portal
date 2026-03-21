@@ -106,7 +106,12 @@ export function updateGuard(id, data) {
 export function getOrders() {
   seedIfEmpty();
   const raw = JSON.parse(localStorage.getItem(ORDERS_KEY) || '[]');
-  return raw.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+  return raw.sort((a, b) => {
+    const dateA = new Date(a.created_date || a.created_at).getTime();
+    const dateB = new Date(b.created_date || b.created_at).getTime();
+
+    return dateB - dateA;
+  });
 }
 
 function saveOrders(orders) {

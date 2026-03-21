@@ -3,7 +3,7 @@ import { ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 
-import { updateGuard } from '../components/localStore';
+
 import GuardSignIn from '../components/guard/GuardSignIn';
 import GuardHeader from '../components/guard/GuardHeader';
 import CameraScanner from '../components/guard/CameraScanner';
@@ -32,34 +32,20 @@ export default function GuardPortal() {
   useEffect(() => {
     if (!result) return;
 
-    // ❌ ERROR CASE
-    if (result.error) {
-      // 🔊 sound
-      if (failSound) {
-        failSound.currentTime = 0;
-        failSound.play().catch(() => {});
-      }
+    const timer = setTimeout(() => {
+      setResult(null);
+      setInputCode("");
+    }, 2500);
 
-      // 📳 vibration (error pattern)
-      if (navigator.vibrate) {
-        navigator.vibrate([200, 100, 200]);
-      }
+    return () => clearTimeout(timer);
+  }, [result]);
 
-      return;
+  useEffect(() => {
+    const saved = localStorage.getItem("guard");
+    if (saved) {
+      setGuard(JSON.parse(saved));
     }
-
-    // ✅ SUCCESS CASE
-    if (successSound) {
-      successSound.currentTime = 0;
-      successSound.play().catch(() => {});
-    }
-
-    // 📳 vibration (success pattern)
-    if (navigator.vibrate) {
-      navigator.vibrate(200);
-    }
-
-  }, [result, successSound, failSound]);
+  }, []);
 
   const reset = () => {
     setResult(null);
@@ -72,22 +58,27 @@ export default function GuardPortal() {
     setLoading(true);
 
     try {
-      const API_URL = "https://your-actual-backend-url.onrender.com";
+      const API_URL = "https://stickypay-guard-portal.onrender.com";
 
       // 🔥 Extract orderId from QR
-      let orderId = code;
-  
-      if (code.includes("orderId:")) {
-      orderId = code.split("orderId:")[1];
+      let cleanCode = code.trim();
+
+      // handle URL QR
+      if (cleanCode.includes("/")) {
+        cleanCode = cleanCode.split("/").pop();
       }
 
-      const res = await fetch(`${API_URL}/api/orders/verify`, {
+      const res = await fetch(`${API_URL}/api/guard/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ orderId }), // ✅ IMPORTANT CHANGE
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ guard_id: guardId, pin }),
       });
+
+      if (!res.ok) {
+        throw new Error("API not found or server error");
+      }
+
+      const data = await res.json();
 
       const data = await res.json();
       setResult(data);
@@ -100,10 +91,29 @@ export default function GuardPortal() {
     setLoading(false);
   };
 
-  const handleSignOut = () => {
-    if (guard) {
-      updateGuard(guard.id, { is_active: false, shift_end: new Date().toISOString() });
+  const handleSignOut = async () => {
+    try {
+      const API_URL = "https://stickypay-guard-portal.onrender.com";
+
+      // 🔥 OPTIONAL: update guard status in DB
+      await fetch(`${API_URL}/api/guard/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          guard_id: guard?.guard_id,
+        }),
+      });
+
+    } catch (err) {
+      console.error("Logout error:", err);
     }
+
+    // ✅ Clear session
+    localStorage.removeItem("guard");
+
+    // ✅ Reset UI
     setGuard(null);
     setResult(null);
     setInputCode('');
