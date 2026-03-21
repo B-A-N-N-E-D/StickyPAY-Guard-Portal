@@ -11,64 +11,72 @@ export default function CameraScanner({ onCodeDetected }) {
   const trackRef = useRef(null);
 
   const startCamera = async () => {
+    if (scannerRef.current) return; // 🚫 prevent multiple instances
+
     setIsOpen(true);
     setError("");
 
-    setTimeout(async () => {
-      const scanner = new Html5Qrcode("qr-reader");
-      scannerRef.current = scanner;
+    const scanner = new Html5Qrcode("qr-reader");
+    scannerRef.current = scanner;
 
-      try {
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 15,
-            qrbox: { width: 280, height: 280 },
-          },
-          (decodedText) => {
-            // 📳 Vibrate on scan
-            if (navigator.vibrate) {
-              navigator.vibrate([100, 50, 100]); // 200ms vibration
-            }
-            stopCamera();
-            onCodeDetected(decodedText);
-          },
-          () => {}
-        );
-
-        // ✅ Get video track for flash
-        setTimeout(() => {
-          const video = document.querySelector("#qr-reader video");
-
-          if (video instanceof HTMLVideoElement && video.srcObject instanceof MediaStream) {
-            const stream = video.srcObject;
-            const track = stream.getVideoTracks()[0];
-
-            if (track) {
-              trackRef.current = track;
-            }
+    try {
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          if (navigator.vibrate) {
+            navigator.vibrate(100);
           }
-        }, 500);
 
-      } catch (err) {
-        console.error(err);
-        setError("Camera error or permission denied");
-      }
-    }, 200);
+          stopCamera();
+          onCodeDetected(decodedText);
+        },
+        () => {}
+      );
+
+      // ✅ Wait for video properly (NOT random timeout)
+      setTimeout(() => {
+        const video = document.querySelector("#qr-reader video");
+
+        if (video && video instanceof HTMLVideoElement) {
+          const stream = video.srcObject;
+
+          if (stream && stream instanceof MediaStream) {
+            const track = stream.getVideoTracks()[0];
+            trackRef.current = track;
+          }
+        }
+      }, 800);
+
+    } catch (err) {
+      console.error(err);
+      setError("Camera error or permission denied");
+      scannerRef.current = null;
+    }
   };
 
   const stopCamera = async () => {
-    if (scannerRef.current) {
-      await scannerRef.current.stop().catch(() => {});
-      scannerRef.current.clear();
-      scannerRef.current = null;
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      }
+    } catch (err) {
+      console.log("Stop error:", err);
     }
 
-    // turn off flash if on
-    if (trackRef.current && flashOn) {
-      trackRef.current.applyConstraints({
-        advanced: [{ torch: false }]
-      }).catch(() => {});
+    scannerRef.current = null;
+
+    // 🔦 Turn off flash safely
+    if (trackRef.current) {
+      try {
+        await trackRef.current.applyConstraints({
+          advanced: [{ torch: false }]
+        });
+      } catch {}
     }
 
     trackRef.current = null;
@@ -77,7 +85,10 @@ export default function CameraScanner({ onCodeDetected }) {
   };
 
   const toggleFlash = async () => {
-    if (!trackRef.current) return;
+    if (!trackRef.current) {
+      setError("Camera not ready yet");
+      return;
+    }
 
     const capabilities = trackRef.current.getCapabilities();
 
