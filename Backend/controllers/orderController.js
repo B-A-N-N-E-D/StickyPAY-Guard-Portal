@@ -45,32 +45,48 @@ export const verifyOrder = async (req, res) => {
   try {
     const { code } = req.body;
 
-    const { data } = await supabase
+    if (!code) {
+      return res.status(400).json({ error: "QR code missing" });
+    }
+
+    // ✅ FIX: Use transaction_id instead of qr_code
+    const { data, error } = await supabase
       .from("orders")
-      .select("*")
-      .eq("qr_code", code)
+      .select("id, transaction_id, verified, verified_at")
+      .eq("transaction_id", code)
       .single();
 
-    if (!data) {
-      return res.json({ error: "Invalid QR" });
+    if (error || !data) {
+      return res.status(404).json({ error: "Invalid QR ❌" });
     }
 
     if (data.verified) {
-      return res.json({ error: "Already used" });
+      return res.status(400).json({
+        error: "Already used ⚠️",
+        verified_at: data.verified_at,
+      });
     }
 
-    await supabase
+    // ✅ SAFE UPDATE
+    const { error: updateError } = await supabase
       .from("orders")
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
-        verified_by: req.guard.id // 🔥 TRACK GUARD
       })
-      .eq("order_id", data.order_id);
+      .eq("transaction_id", code);
 
-    res.json({ success: true, order: data });
+    if (updateError) {
+      return res.status(500).json({ error: "Update failed" });
+    }
 
-  } catch {
+    res.json({
+      success: true,
+      message: "Entry Allowed ✅",
+    });
+
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 };
