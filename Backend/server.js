@@ -1,31 +1,21 @@
 import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+import { protect } from "../middleware/authMiddleware.js";
 
-import authRoutes from "./routes/authRoutes.js";
-import orderRoutes from "./routes/orderRoutes.js";
-import guardRoutes from "./routes/guardRoutes.js";
+import {
+  createOrder,
+  verifyOrder,
+  getOrders
+} from "../controllers/orderController.js";
 
-dotenv.config();
+const router = express.Router();
 
-const app = express();
+// ✅ Create order
+router.post("/create", createOrder);
 
-app.use(cors({
-  origin: "*"
-}));
+// ✅ Verify order (PROTECTED)
+router.post("/verify", protect, verifyOrder);
 
-app.use(express.json());
+// ✅ Get all orders
+router.get("/", getOrders);
 
-app.get("/", (req, res) => {
-  res.json({ message: "Guard Portal Backend Running" });
-});
-
-app.use("/api/auth", authRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/guard", guardRoutes);
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+export default router;

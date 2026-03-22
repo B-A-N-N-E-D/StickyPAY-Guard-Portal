@@ -13,7 +13,7 @@ import CreditsBar from '../components/guard/CreditsBar';
 import OrderHistory from '../components/guard/OrderHistory';
 
 export default function GuardPortal() {
-  const API_URL = "https://stickypay-guard-portal.onrender.com";
+  const API_URL = "https://sticky-pay-guard-portal.vercel.app";
   const [guard, setGuard] = useState(null);
   const [inputCode, setInputCode] = useState('');
   const [result, setResult] = useState(null);
@@ -74,7 +74,7 @@ export default function GuardPortal() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ code: cleanCode }),
       });
