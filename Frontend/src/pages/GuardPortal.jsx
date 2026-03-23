@@ -76,7 +76,7 @@ export default function GuardPortal() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
+          Authorization: token ? `Bearer ${token}` : ""
         },
         body: JSON.stringify({ code: cleanCode }) // ✅ FIXED
       });
