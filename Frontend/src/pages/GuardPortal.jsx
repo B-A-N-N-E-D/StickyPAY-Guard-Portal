@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-
-
 import GuardSignIn from '../components/guard/GuardSignIn';
 import GuardHeader from '../components/guard/GuardHeader';
 import CameraScanner from '../components/guard/CameraScanner';
@@ -13,24 +11,27 @@ import CreditsBar from '../components/guard/CreditsBar';
 import OrderHistory from '../components/guard/OrderHistory';
 
 export default function GuardPortal() {
-  const API_URL = "https://sticky-pay-guard-portal.vercel.app";
+
+  // 🔥 USE ENV VARIABLE (IMPORTANT)
+  const API_URL = import.meta.env.VITE_API_URL;
+
   const [guard, setGuard] = useState(null);
   const [inputCode, setInputCode] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('scan');
+
   const successSound = useMemo(
     () => (typeof Audio !== 'undefined' ? new Audio('/success.mp3') : null),
     []
   );
+
   const failSound = useMemo(
     () => (typeof Audio !== 'undefined' ? new Audio('/fail.mp3') : null),
     []
   );
-  const token = localStorage.getItem("token");
 
-  
-
+  // 🧠 Auto clear result
   useEffect(() => {
     if (!result) return;
 
@@ -42,6 +43,7 @@ export default function GuardPortal() {
     return () => clearTimeout(timer);
   }, [result]);
 
+  // 🧠 Load guard
   useEffect(() => {
     const saved = localStorage.getItem("guard");
     if (saved) {
@@ -49,13 +51,12 @@ export default function GuardPortal() {
     }
   }, []);
 
-  
-
   const reset = () => {
     setResult(null);
     setInputCode('');
   };
 
+  // 🔥 FIXED VERIFY FUNCTION
   const verifyCode = async (code) => {
     if (!code) return;
 
@@ -66,6 +67,7 @@ export default function GuardPortal() {
 
       let cleanCode = code.trim();
 
+      // 🔥 handle QR URLs
       if (cleanCode.includes("/")) {
         cleanCode = cleanCode.split("/").pop();
       }
@@ -76,32 +78,43 @@ export default function GuardPortal() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ code: cleanCode }),
+        body: JSON.stringify({ code: cleanCode }) // ✅ FIXED
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("API error");
+        throw new Error(data.message || "API error");
       }
 
-      const data = await res.json();
+      // 🔊 Sound feedback
+      if (data.success) {
+        successSound?.play().catch(() => {});
+      } else {
+        failSound?.play().catch(() => {});
+      }
+
       setResult(data);
 
     } catch (err) {
       console.error(err);
+      failSound?.play().catch(() => {});
       setResult({ error: "Server error" });
     }
 
     setLoading(false);
   };
 
+  // 🔥 FIXED LOGOUT (use backend URL)
   const handleSignOut = async () => {
     try {
-      const API_URL = "https://stickypay-guard-portal.onrender.com";
+      const token = localStorage.getItem("token");
 
       await fetch(`${API_URL}/api/guard/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
           guard_id: guard?.guard_id,
@@ -113,6 +126,7 @@ export default function GuardPortal() {
     }
 
     localStorage.removeItem("guard");
+    localStorage.removeItem("token");
 
     setGuard(null);
     setResult(null);
@@ -137,8 +151,11 @@ export default function GuardPortal() {
       <div className="flex-1 px-4 py-5 space-y-4 max-w-lg mx-auto w-full overflow-y-auto">
         {activeTab === 'scan' ? (
           <>
-            <CreditsBar credits={guard?.credits ?? 0} totalVerified={guard?.total_verified ?? 0} />
-            
+            <CreditsBar
+              credits={guard?.credits ?? 0}
+              totalVerified={guard?.total_verified ?? 0}
+            />
+
             <CameraScanner
               onCodeDetected={(code) => {
                 setInputCode(code);
@@ -152,7 +169,6 @@ export default function GuardPortal() {
               onVerify={() => verifyCode(inputCode)}
               onClearResult={() => setResult(null)}
             />
-
 
             {loading && (
               <motion.div
