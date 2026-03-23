@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import { appParams } from "@/lib/app-params";
 
 const AuthContext = createContext();
 
@@ -9,44 +8,25 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    checkUserAuth();
-  }, []);
-
-  const checkUserAuth = async () => {
+    // ✅ Check localStorage — no API call needed for guard portal
     try {
-      const token = appParams.token;
-
-      if (!token) {
-        setIsAuthenticated(false);
-        setIsLoadingAuth(false);
-        return;
+      const saved = localStorage.getItem("guard");
+      const token = localStorage.getItem("token");
+      if (saved && token) {
+        setUser(JSON.parse(saved));
+        setIsAuthenticated(true);
       }
-
-      const res = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!res.ok) throw new Error("Auth failed");
-
-      const data = await res.json();
-      setUser(data);
-      setIsAuthenticated(true);
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setUser(null);
-      setIsAuthenticated(false);
+    } catch (e) {
+      // ignore parse errors
     }
-
     setIsLoadingAuth(false);
-  };
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("guard");
     setUser(null);
     setIsAuthenticated(false);
-    window.location.href = "/login";
   };
 
   const navigateToLogin = () => {
@@ -59,9 +39,10 @@ export const AuthProvider = ({ children }) => {
         user,
         isAuthenticated,
         isLoadingAuth,
+        isLoadingPublicSettings: false,
+        authError: null,
         logout,
         navigateToLogin,
-        checkUserAuth
       }}
     >
       {children}
@@ -71,10 +52,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };

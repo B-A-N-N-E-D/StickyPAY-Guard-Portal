@@ -1,21 +1,39 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js";
+import cors from "cors";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use(express.static(path.join(__dirname, "public")));
 
-import {
-  createOrder,
-  verifyOrder,
-  getOrders
-} from "../controllers/orderController.js";
+dotenv.config();
 
-const router = express.Router();
+import authRoutes from "./routes/authRoutes.js";
+import guardRoutes from "./routes/guardRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
-// ✅ Create order
-router.post("/create", createOrder);
+const app = express();
 
-// ✅ Verify order (PROTECTED)
-router.post("/verify", protect, verifyOrder);
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://stickypay-guard-portal.vercel.app",
+    // add more frontend URLs here
+  ],
+  credentials: true,
+}));
 
-// ✅ Get all orders
-router.get("/", getOrders);
+app.use(express.json());
 
-export default router;
+app.use("/api/auth", authRoutes);
+app.use("/api/guard", guardRoutes);
+app.use("/api/orders", orderRoutes);
+
+app.get("/", (req, res) => {
+  res.json({ status: "StickyPAY Guard Portal API running ✅" });
+});
+
+const PORT = process.env.PORT || 9999;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

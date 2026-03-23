@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Eye, EyeOff, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const API_URL = "https://stickypay-guard-portal.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function GuardSignIn({ onSignIn }) {
   const [guardId, setGuardId] = useState('');
