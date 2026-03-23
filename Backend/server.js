@@ -3,8 +3,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use(express.static(path.join(__dirname, "public")));
 
 dotenv.config();
 
@@ -12,18 +10,28 @@ import authRoutes from "./routes/authRoutes.js";
 import guardRoutes from "./routes/guardRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 const app = express();
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://stickypay-guard-portal.vercel.app",
-    // add more frontend URLs here
-  ],
+  origin: (origin, callback) => {
+    const allowed = [
+      "http://localhost:5173",
+      "https://sticky-pay-guard-portal.vercel.app",
+    ];
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin || allowed.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
 }));
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/guard", guardRoutes);
