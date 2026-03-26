@@ -41,6 +41,32 @@ export const getOrders = async (req, res) => {
   }
 };
 
+export const getOrderDetails = async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: "QR code missing" });
+    }
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("transaction_id", code)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: "Invalid QR ❌" });
+    }
+
+    res.json({ success: true, order: data });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 export const verifyOrder = async (req, res) => {
   try {
     const { code } = req.body;
@@ -64,17 +90,20 @@ export const verifyOrder = async (req, res) => {
       return res.status(400).json({
         error: "Already used ⚠️",
         verified_at: data.verified_at,
+        order: data
       });
     }
 
     // ✅ SAFE UPDATE
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from("orders")
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
       })
-      .eq("transaction_id", code);
+      .eq("transaction_id", code)
+      .select()
+      .single();
 
     if (updateError) {
       return res.status(500).json({ error: "Update failed" });
@@ -83,6 +112,7 @@ export const verifyOrder = async (req, res) => {
     res.json({
       success: true,
       message: "Entry Allowed ✅",
+      order: updateData
     });
 
   } catch (err) {

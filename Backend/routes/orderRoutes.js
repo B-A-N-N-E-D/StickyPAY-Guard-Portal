@@ -4,12 +4,14 @@ import { protect } from "../middleware/authMiddleware.js";
 import {
   createOrder,
   verifyOrder,
-  getOrders
+  getOrders,
+  getOrderDetails
 } from "../controllers/orderController.js";
 
 const router = express.Router();
 
 router.post("/create", createOrder);
+router.post("/details", getOrderDetails);
 router.post("/verify", verifyOrder);
 router.get("/", getOrders);
 

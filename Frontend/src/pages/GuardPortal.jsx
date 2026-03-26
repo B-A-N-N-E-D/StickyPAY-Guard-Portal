@@ -7,6 +7,7 @@ import GuardHeader from '../components/guard/GuardHeader';
 import CameraScanner from '../components/guard/CameraScanner';
 import ManualInput from '../components/guard/ManualInput';
 import VerificationResult from '../components/guard/VerificationResult';
+import OrderPreview from '../components/guard/OrderPreview';
 import CreditsBar from '../components/guard/CreditsBar';
 import OrderHistory from '../components/guard/OrderHistory';
 
@@ -17,6 +18,8 @@ export default function GuardPortal() {
 
   const [guard, setGuard] = useState(null);
   const [inputCode, setInputCode] = useState('');
+  const [scannedOrder, setScannedOrder] = useState(null);
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('scan');
@@ -53,11 +56,11 @@ export default function GuardPortal() {
 
   const reset = () => {
     setResult(null);
+    setScannedOrder(null);
     setInputCode('');
   };
 
-  // 🔥 FIXED VERIFY FUNCTION
-  const verifyCode = async (code) => {
+  const fetchOrderDetails = async (code) => {
     if (!code) return;
 
     setLoading(true);
@@ -72,19 +75,55 @@ export default function GuardPortal() {
         cleanCode = cleanCode.split("/").pop();
       }
 
+      const res = await fetch(`${API_URL}/api/orders/details`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ code: cleanCode })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "API error");
+      }
+
+      setScannedOrder(data.order);
+      setAlreadyVerified(data.order.verified);
+      successSound?.play().catch(() => {});
+
+    } catch (err) {
+      console.error(err);
+      failSound?.play().catch(() => {});
+      setResult({ error: err.message || "Server error" });
+    }
+
+    setLoading(false);
+  };
+
+  const verifyOrderDetails = async (transactionId) => {
+    if (!transactionId) return;
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+
       const res = await fetch(`${API_URL}/api/orders/verify`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : ""
         },
-        body: JSON.stringify({ code: cleanCode }) // ✅ FIXED
+        body: JSON.stringify({ code: transactionId })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "API error");
+        throw new Error(data.error || "API error");
       }
 
       // 🔊 Sound feedback
@@ -95,11 +134,12 @@ export default function GuardPortal() {
       }
 
       setResult(data);
+      setScannedOrder(null);
 
     } catch (err) {
       console.error(err);
       failSound?.play().catch(() => {});
-      setResult({ error: "Server error" });
+      setResult({ error: err.message || "Server error" });
     }
 
     setLoading(false);
@@ -159,15 +199,15 @@ export default function GuardPortal() {
             <CameraScanner
               onCodeDetected={(code) => {
                 setInputCode(code);
-                verifyCode(code);
+                fetchOrderDetails(code);
               }}
             />
 
             <ManualInput
               inputCode={inputCode}
               setInputCode={setInputCode}
-              onVerify={() => verifyCode(inputCode)}
-              onClearResult={() => setResult(null)}
+              onVerify={() => fetchOrderDetails(inputCode)}
+              onClearResult={() => { setResult(null); setScannedOrder(null); }}
             />
 
             {loading && (
@@ -181,12 +221,24 @@ export default function GuardPortal() {
             )}
 
             <AnimatePresence>
+              {!loading && scannedOrder && !result && (
+                <OrderPreview 
+                  order={scannedOrder} 
+                  alreadyVerified={alreadyVerified}
+                  onVerify={verifyOrderDetails}
+                  onCancel={() => { setScannedOrder(null); setInputCode(''); }}
+                  loading={loading}
+                />
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
               {!loading && result && (
                 <VerificationResult result={result} onReset={reset} />
               )}
             </AnimatePresence>
 
-            {!result && !loading && (
+            {!result && !scannedOrder && !loading && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
