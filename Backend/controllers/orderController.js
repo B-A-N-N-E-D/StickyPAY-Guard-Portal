@@ -82,7 +82,7 @@ export const verifyOrder = async (req, res) => {
     // ✅ FIX: Use transaction_id instead of qr_code
     const { data, error } = await supabase
       .from("orders")
-      .select("id, transaction_id, verified, verified_at")
+      .select("id, transaction_id, verified, verified_date")
       .eq("transaction_id", code)
       .single();
 
@@ -93,7 +93,7 @@ export const verifyOrder = async (req, res) => {
     if (data.verified) {
       return res.status(400).json({
         error: "Already used ⚠️",
-        verified_at: data.verified_at,
+        verified_date: data.verified_date,
         order: data
       });
     }
@@ -103,7 +103,7 @@ export const verifyOrder = async (req, res) => {
       .from("orders")
       .update({
         verified: true,
-        verified_at: new Date().toISOString(),
+        verified_date: new Date().toISOString(),
       })
       .eq("transaction_id", code);
 
@@ -114,7 +114,7 @@ export const verifyOrder = async (req, res) => {
     res.json({
       success: true,
       message: "Entry Allowed ✅",
-      order: { ...data, verified: true, verified_at: new Date().toISOString() }
+      order: { ...data, verified: true, verified_date: new Date().toISOString() }
     });
 
   } catch (err) {

@@ -63,11 +63,11 @@ export default function OrderPreview({ order, onVerify, onReject, onCancel, load
           </span>
         </div>
         
-        {alreadyVerified && order.verified_at && (
+        {alreadyVerified && order.verified_date && (
           <div className="flex justify-between border-t border-red-500/20 pt-2 mt-2">
             <span className="text-red-500 font-semibold">Verified At</span>
             <span className="text-red-500 text-xs font-semibold">
-              {format(new Date(order.verified_at), 'dd MMM yyyy, hh:mm a')}
+              {format(new Date(order.verified_date), 'dd MMM yyyy, hh:mm a')}
             </span>
           </div>
         )}
