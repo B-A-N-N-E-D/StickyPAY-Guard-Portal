@@ -145,6 +145,40 @@ export default function GuardPortal() {
     setLoading(false);
   };
 
+  const rejectOrderDetails = async (transactionId) => {
+    if (!transactionId) return;
+
+    setLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`${API_URL}/api/orders/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : ""
+        },
+        body: JSON.stringify({ code: transactionId })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "API error");
+      }
+
+      setResult(data);
+      setScannedOrder(null);
+
+    } catch (err) {
+      console.error(err);
+      setResult({ error: err.message || "Server error" });
+    }
+
+    setLoading(false);
+  };
+
   // 🔥 FIXED LOGOUT (use backend URL)
   const handleSignOut = async () => {
     try {
@@ -226,6 +260,7 @@ export default function GuardPortal() {
                   order={scannedOrder} 
                   alreadyVerified={alreadyVerified}
                   onVerify={verifyOrderDetails}
+                  onReject={rejectOrderDetails}
                   onCancel={() => { setScannedOrder(null); setInputCode(''); }}
                   loading={loading}
                 />

@@ -3,7 +3,7 @@ import { Package, CheckCircle2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
-export default function OrderPreview({ order, onVerify, onCancel, loading, alreadyVerified }) {
+export default function OrderPreview({ order, onVerify, onReject, onCancel, loading, alreadyVerified }) {
   if (!order) return null;
 
   return (
@@ -98,27 +98,37 @@ export default function OrderPreview({ order, onVerify, onCancel, loading, alrea
       )}
 
       {/* ACTION BUTTONS */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
           disabled={loading}
-          className="flex-1 py-3 rounded-xl border border-secondary text-muted-foreground font-medium hover:bg-secondary transition-colors"
+          className="flex-1 py-3 text-xs rounded-xl border border-secondary text-muted-foreground font-medium hover:bg-secondary transition-colors"
         >
           Cancel
         </button>
         
         {!alreadyVerified && (
           <button
+            onClick={() => onReject(order.transaction_id)}
+            disabled={loading}
+            className="flex-1 py-3 text-xs rounded-xl border border-red-500/50 text-red-500 font-bold hover:bg-red-500/10 transition-colors"
+          >
+            Reject Order
+          </button>
+        )}
+
+        {!alreadyVerified && (
+          <button
             onClick={() => onVerify(order.transaction_id)}
             disabled={loading}
-            className="flex-1 py-3 rounded-xl gradient-banner text-black font-bold flex items-center justify-center gap-2"
+            className="flex-1 py-3 text-xs rounded-xl gradient-banner text-black font-bold flex items-center justify-center gap-1"
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <CheckCircle2 className="w-5 h-5" />
-                Verify Order
+                <CheckCircle2 className="w-4 h-4" />
+                Verify
               </>
             )}
           </button>

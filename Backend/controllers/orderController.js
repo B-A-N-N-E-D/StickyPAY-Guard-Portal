@@ -59,6 +59,10 @@ export const getOrderDetails = async (req, res) => {
       return res.status(404).json({ error: "Invalid QR ❌" });
     }
 
+    if (data.verified) {
+      return res.status(400).json({ error: "Already used ⚠️" });
+    }
+
     res.json({ success: true, order: data });
 
   } catch (err) {
@@ -95,15 +99,13 @@ export const verifyOrder = async (req, res) => {
     }
 
     // ✅ SAFE UPDATE
-    const { data: updateData, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("orders")
       .update({
         verified: true,
         verified_at: new Date().toISOString(),
       })
-      .eq("transaction_id", code)
-      .select()
-      .single();
+      .eq("transaction_id", code);
 
     if (updateError) {
       return res.status(500).json({ error: "Update failed" });
@@ -112,7 +114,39 @@ export const verifyOrder = async (req, res) => {
     res.json({
       success: true,
       message: "Entry Allowed ✅",
-      order: updateData
+      order: { ...data, verified: true, verified_at: new Date().toISOString() }
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const rejectOrder = async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: "QR code missing" });
+    }
+
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "cancelled",
+        verified: false,
+      })
+      .eq("transaction_id", code);
+
+    if (updateError) {
+      console.error(updateError);
+      return res.status(500).json({ error: "Reject failed" });
+    }
+
+    res.json({
+      success: true,
+      message: "Order Rejected ❌"
     });
 
   } catch (err) {

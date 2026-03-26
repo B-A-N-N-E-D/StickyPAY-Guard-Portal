@@ -5,7 +5,8 @@ import {
   createOrder,
   verifyOrder,
   getOrders,
-  getOrderDetails
+  getOrderDetails,
+  rejectOrder
 } from "../controllers/orderController.js";
 
 const router = express.Router();
@@ -13,6 +14,7 @@ const router = express.Router();
 router.post("/create", createOrder);
 router.post("/details", getOrderDetails);
 router.post("/verify", verifyOrder);
+router.post("/reject", rejectOrder);
 router.get("/", getOrders);
 
 
