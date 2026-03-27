@@ -6,6 +6,14 @@ import { motion } from 'framer-motion';
 export default function OrderPreview({ order, onVerify, onReject, onCancel, loading, alreadyVerified }) {
   if (!order) return null;
 
+  const dateStr = order.created_at
+    ? format(new Date(order.created_at), 'dd MMM yyyy, hh:mm a')
+    : '—';
+
+  const verifiedAtStr = order.verified_at
+    ? format(new Date(order.verified_at), 'dd MMM yyyy, hh:mm a')
+    : null;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -30,25 +38,19 @@ export default function OrderPreview({ order, onVerify, onReject, onCancel, load
       </div>
 
       <div className="bg-secondary rounded-xl p-4 space-y-2.5 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Transaction ID</span>
-          <span className="text-foreground font-medium font-mono text-xs">{order.transaction_id}</span>
-        </div>
+        {order.transaction_id && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Transaction ID</span>
+            <span className="text-foreground font-medium font-mono text-xs">{order.transaction_id}</span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Store</span>
           <span className="text-foreground font-medium">{order.store_name || '—'}</span>
         </div>
-        {order.customer_name && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Customer</span>
-            <span className="text-foreground font-medium">{order.customer_name}</span>
-          </div>
-        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Total Paid</span>
-          <span className="text-accent font-bold">
-            {order.currency === 'INR' ? '₹' : '$'}{order.total_amount?.toFixed(2)}
-          </span>
+          <span className="text-accent font-bold">₹{Number(order.total_amount || 0).toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Payment</span>
@@ -56,46 +58,16 @@ export default function OrderPreview({ order, onVerify, onReject, onCancel, load
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Date</span>
-          <span className="text-foreground text-xs">
-            {order.created_date
-              ? format(new Date(order.created_date), 'dd MMM yyyy, hh:mm a')
-              : '—'}
-          </span>
+          <span className="text-foreground text-xs">{dateStr}</span>
         </div>
-        
-        {alreadyVerified && order.verified_date && (
+
+        {alreadyVerified && verifiedAtStr && (
           <div className="flex justify-between border-t border-red-500/20 pt-2 mt-2">
             <span className="text-red-500 font-semibold">Verified At</span>
-            <span className="text-red-500 text-xs font-semibold">
-              {format(new Date(order.verified_date), 'dd MMM yyyy, hh:mm a')}
-            </span>
+            <span className="text-red-500 text-xs font-semibold">{verifiedAtStr}</span>
           </div>
         )}
       </div>
-
-      {order.items?.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Package className="w-4 h-4 text-muted-foreground" />
-            <p className="text-muted-foreground text-xs uppercase tracking-wider">
-              Items ({order.items.length})
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between bg-secondary rounded-xl px-3 py-2.5 text-sm">
-                <div>
-                  <p className="font-medium text-foreground">{item.name}</p>
-                  <p className="text-muted-foreground text-xs">Qty: {item.quantity}</p>
-                </div>
-                <p className="text-accent font-semibold">
-                  {order.currency === 'INR' ? '₹' : '$'}{(item.price * item.quantity).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ACTION BUTTONS */}
       <div className="flex gap-2 pt-2">
@@ -106,10 +78,10 @@ export default function OrderPreview({ order, onVerify, onReject, onCancel, load
         >
           Cancel
         </button>
-        
+
         {!alreadyVerified && (
           <button
-            onClick={() => onReject(order.transaction_id)}
+            onClick={() => onReject(order.qr_code || order.transaction_id)}
             disabled={loading}
             className="flex-1 py-3 text-xs rounded-xl border border-red-500/50 text-red-500 font-bold hover:bg-red-500/10 transition-colors"
           >
@@ -119,7 +91,7 @@ export default function OrderPreview({ order, onVerify, onReject, onCancel, load
 
         {!alreadyVerified && (
           <button
-            onClick={() => onVerify(order.transaction_id)}
+            onClick={() => onVerify(order.qr_code || order.transaction_id)}
             disabled={loading}
             className="flex-1 py-3 text-xs rounded-xl gradient-banner text-black font-bold flex items-center justify-center gap-1"
           >

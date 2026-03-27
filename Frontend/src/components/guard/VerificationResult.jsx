@@ -3,43 +3,44 @@ import { CheckCircle2, XCircle, AlertCircle, Package, RefreshCw, CheckCircle } f
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
-
-
 export default function VerificationResult({ result, onReset }) {
-  // FULL SCREEN RESULT OVERLAY
-if (result.order && !result.alreadyVerified) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-green-600 flex items-center justify-center z-50"
-    >
-      <div className="text-center text-white space-y-4">
-        <CheckCircle className="w-32 h-32 mx-auto" />
-        <h1 className="text-5xl font-bold">VERIFIED</h1>
-        <p className="text-xl">Payment Confirmed</p>
-      </div>
-    </motion.div>
-  );
-}
+  // ✅ GREEN: Successful verify
+  if (result.order && !result.alreadyVerified) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 bg-green-600 flex items-center justify-center z-50"
+      >
+        <div className="text-center text-white space-y-4">
+          <CheckCircle className="w-32 h-32 mx-auto" />
+          <h1 className="text-5xl font-bold">VERIFIED</h1>
+          <p className="text-xl">Payment Confirmed</p>
+        </div>
+      </motion.div>
+    );
+  }
 
-if (result.error) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-red-600 flex items-center justify-center z-50"
-    >
-      <div className="text-center text-white space-y-4">
-        <XCircle className="w-32 h-32 mx-auto" />
-        <h1 className="text-5xl font-bold">INVALID</h1>
-        <p className="text-lg">{result.error}</p>
-      </div>
-    </motion.div>
-  );
-}
+  // ❌ RED: Invalid / fake QR (only shown on bad QR scan)
+  if (result.error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed inset-0 bg-red-600 flex items-center justify-center z-50"
+      >
+        <div className="text-center text-white space-y-4">
+          <XCircle className="w-32 h-32 mx-auto" />
+          <h1 className="text-5xl font-bold">INVALID</h1>
+          <p className="text-lg">{result.error}</p>
+        </div>
+      </motion.div>
+    );
+  }
 
+  // ⚠️ Already verified card (inline)
   if (result.alreadyVerified) {
+    const order = result.order;
     return (
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -51,10 +52,10 @@ if (result.error) {
         <div className="flex-1">
           <p className="font-bold text-accent">Already Verified</p>
           <p className="text-muted-foreground text-sm mt-1">This receipt was already checked.</p>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">{result.order?.transaction_id}</p>
-          {result.order?.verified_date && (
+          <p className="text-xs text-muted-foreground mt-1 font-mono">{order?.transaction_id}</p>
+          {order?.verified_at && (
             <p className="text-xs text-muted-foreground mt-1">
-              Verified at: {format(new Date(result.order.verified_date), 'dd MMM, hh:mm a')}
+              Verified at: {format(new Date(order.verified_at), 'dd MMM, hh:mm a')}
             </p>
           )}
         </div>
@@ -65,8 +66,8 @@ if (result.error) {
     );
   }
 
+  // Fallback: detailed card (after verified — shown briefly before auto-clear)
   const order = result.order;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -94,17 +95,9 @@ if (result.error) {
           <span className="text-muted-foreground">Store</span>
           <span className="text-foreground font-medium">{order?.store_name || '—'}</span>
         </div>
-        {order?.customer_name && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Customer</span>
-            <span className="text-foreground font-medium">{order.customer_name}</span>
-          </div>
-        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">Total Paid</span>
-          <span className="text-accent font-bold">
-            {order?.currency === 'INR' ? '₹' : '$'}{order?.total_amount?.toFixed(2)}
-          </span>
+          <span className="text-accent font-bold">₹{Number(order?.total_amount || 0).toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Payment</span>
@@ -113,9 +106,7 @@ if (result.error) {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Date</span>
           <span className="text-foreground text-xs">
-            {order?.created_date
-              ? format(new Date(order.created_date), 'dd MMM yyyy, hh:mm a')
-              : '—'}
+            {order?.created_at ? format(new Date(order.created_at), 'dd MMM yyyy, hh:mm a') : '—'}
           </span>
         </div>
         <div className="flex justify-between">
@@ -123,30 +114,6 @@ if (result.error) {
           <span className="text-accent font-bold uppercase text-xs tracking-wider">verified</span>
         </div>
       </div>
-
-      {order?.items?.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Package className="w-4 h-4 text-muted-foreground" />
-            <p className="text-muted-foreground text-xs uppercase tracking-wider">
-              Items ({order.items.length})
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="flex justify-between bg-secondary rounded-xl px-3 py-2.5 text-sm">
-                <div>
-                  <p className="font-medium text-foreground">{item.name}</p>
-                  <p className="text-muted-foreground text-xs">Qty: {item.quantity}</p>
-                </div>
-                <p className="text-accent font-semibold">
-                  {order?.currency === 'INR' ? '₹' : '$'}{(item.price * item.quantity).toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 }

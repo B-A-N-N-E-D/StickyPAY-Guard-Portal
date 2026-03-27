@@ -8,6 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const statusConfig = {
   verified:  { label: 'Verified',   color: 'text-accent',       bg: 'bg-accent/10 border-accent/30',           icon: CheckCircle2 },
   paid:      { label: 'Paid',       color: 'text-primary',      bg: 'bg-primary/10 border-primary/30',         icon: Clock },
+  completed: { label: 'Completed',  color: 'text-primary',      bg: 'bg-primary/10 border-primary/30',         icon: Clock },
   cancelled: { label: 'Cancelled',  color: 'text-destructive',  bg: 'bg-destructive/10 border-destructive/30', icon: XCircle },
 };
 
@@ -29,8 +30,8 @@ export default function OrderHistory() {
       });
       if (!res.ok) throw new Error('Failed to load orders');
       const data = await res.json();
-      // Sort newest first
-      data.sort((a, b) => new Date(b.created_date || b.created_at).getTime() - new Date(a.created_date || a.created_at).getTime());
+      // Sort newest first (already sorted by backend, but just in case)
+      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setOrders(data);
     } catch (err) {
       setFetchError(err.message);
@@ -47,16 +48,16 @@ export default function OrderHistory() {
     const matchSearch =
       !search ||
       o.transaction_id?.toLowerCase().includes(q) ||
-      o.customer_name?.toLowerCase().includes(q) ||
+      o.qr_code?.toLowerCase().includes(q) ||
       o.store_name?.toLowerCase().includes(q);
-    const matchFilter = filter === 'all' || o.status === filter;
+    const matchFilter = filter === 'all' || o.payment_status === filter || (filter === 'paid' && !o.payment_status);
     return matchSearch && matchFilter;
   });
 
   const stats = {
     total:    orders.length,
-    verified: orders.filter(o => o.status === 'verified').length,
-    paid:     orders.filter(o => o.status === 'paid').length,
+    verified: orders.filter(o => o.payment_status === 'verified' || o.verified === true).length,
+    paid:     orders.filter(o => !o.payment_status || o.payment_status === 'paid' || o.payment_status === 'completed').length,
   };
 
   return (
@@ -131,17 +132,18 @@ export default function OrderHistory() {
         <div className="space-y-2 pb-4">
           <AnimatePresence>
             {filtered.map((order, i) => {
-              const cfg = statusConfig[order.status] || statusConfig.paid;
+              const statusKey = order.verified ? 'verified' : (order.payment_status || 'paid');
+              const cfg = statusConfig[statusKey] || statusConfig.paid;
               const Icon = cfg.icon;
-              const isOpen = expanded === order.id;
+              const isOpen = expanded === order.order_id;
               return (
                 <motion.div
-                  key={order.id}
+                  key={order.order_id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   className={`bg-card border rounded-xl overflow-hidden cursor-pointer ${isOpen ? 'border-primary/40' : 'border-border hover:border-border/80'}`}
-                  onClick={() => setExpanded(isOpen ? null : order.id)}
+                  onClick={() => setExpanded(isOpen ? null : order.order_id)}
                 >
                   <div className="px-4 py-3 flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cfg.bg} border`}>
@@ -149,13 +151,15 @@ export default function OrderHistory() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">
-                        {order.customer_name || 'Customer'}
+                        {order.store_name || 'Store'}
                       </p>
-                      <p className="text-xs text-muted-foreground font-mono truncate">{order.transaction_id}</p>
+                      <p className="text-xs text-muted-foreground font-mono truncate">
+                        {order.transaction_id || order.qr_code || order.order_id}
+                      </p>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <p className="text-sm font-bold text-primary">
-                        {order.currency === 'INR' ? '₹' : '$'}{order.total_amount?.toFixed(2)}
+                        ₹{Number(order.total_amount || 0).toFixed(2)}
                       </p>
                       <span className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</span>
                     </div>
@@ -179,33 +183,18 @@ export default function OrderHistory() {
                         <div>
                           <p className="text-muted-foreground">Order Date</p>
                           <p className="text-foreground font-medium">
-                            {order.created_date ? format(new Date(order.created_date), 'dd MMM yy, hh:mm a') : '—'}
+                            {order.created_at ? format(new Date(order.created_at), 'dd MMM yy, hh:mm a') : '—'}
                           </p>
                         </div>
-                        {order.verified_date && (
+                        {order.verified_at && (
                           <div>
                             <p className="text-muted-foreground">Verified At</p>
                             <p className="text-accent font-medium">
-                              {format(new Date(order.verified_date), 'dd MMM yy, hh:mm a')}
+                              {format(new Date(order.verified_at), 'dd MMM yy, hh:mm a')}
                             </p>
                           </div>
                         )}
                       </div>
-                      {order.items?.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-xs text-muted-foreground mb-1.5 uppercase tracking-wider">Items ({order.items.length})</p>
-                          <div className="space-y-1">
-                            {order.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between text-xs bg-secondary rounded-lg px-2.5 py-1.5">
-                                <span className="text-foreground">{item.name} <span className="text-muted-foreground">x{item.quantity}</span></span>
-                                <span className="text-primary font-semibold">
-                                  {order.currency === 'INR' ? '₹' : '$'}{(item.price * item.quantity).toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </motion.div>
                   )}
                 </motion.div>
