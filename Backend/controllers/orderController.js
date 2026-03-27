@@ -1,14 +1,33 @@
 import { supabase } from "../config/supabase.js";
 
+// Helper: find order by qr_code OR transaction_id
+async function findOrder(code) {
+  // 1. Try qr_code
+  const { data: qrData } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("qr_code", code)
+    .maybeSingle();
+
+  if (qrData) return qrData;
+
+  // 2. Try transaction_id
+  const { data: txnData } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("transaction_id", code)
+    .maybeSingle();
+
+  return txnData || null;
+}
+
 export const createOrder = async (req, res) => {
   try {
     const { user_id, store_id, store_name, total_amount, payment_method, qr_code, transaction_id } = req.body;
-
     const { data, error } = await supabase
       .from("orders")
       .insert([{ user_id, store_id, store_name, total_amount, payment_method, qr_code, transaction_id }])
       .select();
-
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err) {
@@ -22,7 +41,6 @@ export const getOrders = async (req, res) => {
       .from("orders")
       .select("*")
       .order("created_at", { ascending: false });
-
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
   } catch (err) {
@@ -30,148 +48,96 @@ export const getOrders = async (req, res) => {
   }
 };
 
-// Called when guard scans a QR — supports both qr_code and transaction_id fields
+// Called when guard scans QR — fetch order details without verifying
 export const getOrderDetails = async (req, res) => {
   try {
     const { code } = req.body;
-
     if (!code) return res.status(400).json({ error: "QR code missing" });
 
-    // Try matching qr_code first, then transaction_id
-    let { data, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("qr_code", code)
-      .maybeSingle();
+    const order = await findOrder(code.trim());
 
-    if (!data) {
-      const result = await supabase
-        .from("orders")
-        .select("*")
-        .eq("transaction_id", code)
-        .maybeSingle();
-      data = result.data;
-      error = result.error;
-    }
-
-    if (error || !data) {
+    if (!order) {
       return res.status(404).json({ error: "Invalid QR — order not found" });
     }
 
-    if (data.verified) {
-      // Already used — return data so frontend can show the "Already Verified" card
-      return res.json({ alreadyVerified: true, order: data });
+    if (order.verified) {
+      // Already used — return data so frontend shows "Already Verified" card
+      return res.json({ alreadyVerified: true, order });
     }
 
-    res.json({ success: true, order: data });
-
+    res.json({ success: true, order });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("getOrderDetails error:", err);
+    res.status(500).json({ error: "Server error: " + err.message });
   }
 };
 
+// Called when guard presses Verify — sets verified=true in DB
 export const verifyOrder = async (req, res) => {
   try {
     const { code } = req.body;
-
     if (!code) return res.status(400).json({ error: "QR code missing" });
 
-    // Find order by qr_code or transaction_id
-    let data;
+    const order = await findOrder(code.trim());
 
-    // 1. Try qr_code
-    const { data: qrData, error: qrErr } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("qr_code", code)
-      .maybeSingle();
-
-    if (qrData) {
-      data = qrData;
-    } else {
-      // 2. Try transaction_id
-      const { data: txnData, error: txnErr } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("transaction_id", code)
-        .maybeSingle();
-
-      if (txnData) data = txnData;
-    }
-
-    if (!data) {
+    if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    if (data.verified) {
+    if (order.verified) {
       return res.status(400).json({ error: "Already verified" });
     }
 
-    // Mark as verified
-    const { data: updatedOrder, error: updateError } = await supabase
+    // Update verified = true (and verified_at timestamp)
+    const { error: updateError } = await supabase
       .from("orders")
       .update({
         verified: true,
-        payment_status: "verified",
         verified_at: new Date().toISOString(),
       })
-      .eq("order_id", data.order_id)
-      .select()
-      .single();
+      .eq("order_id", order.order_id);
 
     if (updateError) {
-      console.error("Update error:", updateError);
+      console.error("verifyOrder update error:", JSON.stringify(updateError));
       return res.status(500).json({ error: "Update failed: " + updateError.message });
     }
+
+    // Return the updated order object to the frontend
+    const updatedOrder = { ...order, verified: true, verified_at: new Date().toISOString() };
 
     res.json({
       success: true,
       message: "Entry Allowed ✅",
-      order: updatedOrder
+      order: updatedOrder,
     });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("verifyOrder error:", err);
+    res.status(500).json({ error: "Server error: " + err.message });
   }
 };
 
+// Called when guard presses Reject
 export const rejectOrder = async (req, res) => {
   try {
     const { code } = req.body;
-
     if (!code) return res.status(400).json({ error: "QR code missing" });
 
-    // Find by qr_code or transaction_id
-    let { data } = await supabase
-      .from("orders")
-      .select("order_id")
-      .eq("qr_code", code)
-      .maybeSingle();
-
-    if (!data) {
-      const result = await supabase
-        .from("orders")
-        .select("order_id")
-        .eq("transaction_id", code)
-        .maybeSingle();
-      data = result.data;
-    }
-
-    if (!data) return res.status(404).json({ error: "Order not found" });
+    const order = await findOrder(code.trim());
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
     const { error: updateError } = await supabase
       .from("orders")
-      .update({ payment_status: "cancelled", verified: false })
-      .eq("order_id", data.order_id);
+      .update({ verified: false })
+      .eq("order_id", order.order_id);
 
-    if (updateError) return res.status(500).json({ error: "Reject failed" });
+    if (updateError) {
+      console.error("rejectOrder update error:", JSON.stringify(updateError));
+      return res.status(500).json({ error: "Reject failed: " + updateError.message });
+    }
 
     res.json({ success: true, message: "Order Rejected ❌" });
-
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
+    console.error("rejectOrder error:", err);
+    res.status(500).json({ error: "Server error: " + err.message });
   }
 };
