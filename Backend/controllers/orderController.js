@@ -78,23 +78,29 @@ export const verifyOrder = async (req, res) => {
     if (!code) return res.status(400).json({ error: "QR code missing" });
 
     // Find order by qr_code or transaction_id
-    let { data, error } = await supabase
+    let data;
+
+    // 1. Try qr_code
+    const { data: qrData, error: qrErr } = await supabase
       .from("orders")
       .select("*")
       .eq("qr_code", code)
       .maybeSingle();
 
-    if (!data) {
-      const result = await supabase
+    if (qrData) {
+      data = qrData;
+    } else {
+      // 2. Try transaction_id
+      const { data: txnData, error: txnErr } = await supabase
         .from("orders")
         .select("*")
         .eq("transaction_id", code)
         .maybeSingle();
-      data = result.data;
-      error = result.error;
+
+      if (txnData) data = txnData;
     }
 
-    if (error || !data) {
+    if (!data) {
       return res.status(404).json({ error: "Order not found" });
     }
 
@@ -103,14 +109,16 @@ export const verifyOrder = async (req, res) => {
     }
 
     // Mark as verified
-    const { error: updateError } = await supabase
+    const { data: updatedOrder, error: updateError } = await supabase
       .from("orders")
       .update({
         verified: true,
         payment_status: "verified",
         verified_at: new Date().toISOString(),
       })
-      .eq("order_id", data.order_id);
+      .eq("order_id", data.order_id)
+      .select()
+      .single();
 
     if (updateError) {
       console.error("Update error:", updateError);
@@ -120,7 +128,7 @@ export const verifyOrder = async (req, res) => {
     res.json({
       success: true,
       message: "Entry Allowed ✅",
-      order: { ...data, verified: true, payment_status: "verified", verified_at: new Date().toISOString() }
+      order: updatedOrder
     });
 
   } catch (err) {
