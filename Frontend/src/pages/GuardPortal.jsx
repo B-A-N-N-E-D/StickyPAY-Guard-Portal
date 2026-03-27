@@ -64,6 +64,8 @@ export default function GuardPortal() {
     if (!code) return;
 
     setLoading(true);
+    setResult(null);
+    setScannedOrder(null);
 
     try {
       const token = localStorage.getItem("token");
@@ -86,21 +88,32 @@ export default function GuardPortal() {
 
       const data = await res.json();
 
+      if (data.alreadyVerified) {
+        // QR exists but already used — show already-verified card, NOT the INVALID screen
+        setScannedOrder(data.order);
+        setAlreadyVerified(true);
+        failSound?.play().catch(() => {});
+        return;
+      }
+
       if (!res.ok) {
-        throw new Error(data.error || "API error");
+        // Truly invalid/fake QR — show the INVALID full-screen
+        failSound?.play().catch(() => {});
+        setResult({ error: data.error || "Invalid QR code" });
+        return;
       }
 
       setScannedOrder(data.order);
-      setAlreadyVerified(data.order.verified);
+      setAlreadyVerified(false);
       successSound?.play().catch(() => {});
 
     } catch (err) {
       console.error(err);
       failSound?.play().catch(() => {});
       setResult({ error: err.message || "Server error" });
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const verifyOrderDetails = async (transactionId) => {
@@ -122,27 +135,27 @@ export default function GuardPortal() {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || "API error");
-      }
-
-      // 🔊 Sound feedback
       if (data.success) {
+        // ✅ Show green VERIFIED fullscreen
         successSound?.play().catch(() => {});
+        setResult({ order: data.order, success: true });
+        setScannedOrder(null);
       } else {
+        // Something went wrong with verification — just reset quietly
         failSound?.play().catch(() => {});
+        setScannedOrder(null);
+        setResult(null);
       }
-
-      setResult(data);
-      setScannedOrder(null);
 
     } catch (err) {
       console.error(err);
       failSound?.play().catch(() => {});
-      setResult({ error: err.message || "Server error" });
+      // Don't show INVALID screen on verify error — just reset
+      setScannedOrder(null);
+      setResult(null);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const rejectOrderDetails = async (transactionId) => {

@@ -52,7 +52,7 @@ export default function CameraScanner({ onCodeDetected }) {
         await scanner.start(
           cameraId,
           {
-            fps: 10,
+            fps: 15,
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {

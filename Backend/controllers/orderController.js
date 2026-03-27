@@ -60,7 +60,8 @@ export const getOrderDetails = async (req, res) => {
     }
 
     if (data.verified) {
-      return res.status(400).json({ error: "Already used ⚠️" });
+      // Return order data so frontend can show the "Already Verified" card, not INVALID screen
+      return res.json({ alreadyVerified: true, order: data });
     }
 
     res.json({ success: true, order: data });
@@ -102,7 +103,9 @@ export const verifyOrder = async (req, res) => {
     const { error: updateError } = await supabase
       .from("orders")
       .update({
-        verified: true
+        verified: true,
+        status: "verified",
+        verified_date: new Date().toISOString(),
       })
       .eq("transaction_id", code);
 

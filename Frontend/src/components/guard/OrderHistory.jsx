@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { getOrders } from '../localStore';
-import { CheckCircle2, XCircle, Clock, Search, RefreshCw, Package } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { CheckCircle2, XCircle, Clock, Search, RefreshCw, Package, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const statusConfig = {
   verified:  { label: 'Verified',   color: 'text-accent',       bg: 'bg-accent/10 border-accent/30',           icon: CheckCircle2 },
@@ -15,10 +16,31 @@ export default function OrderHistory() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [expanded, setExpanded] = useState(null);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
 
-  const loadOrders = () => setOrders(getOrders());
+  const loadOrders = useCallback(async () => {
+    setLoadingOrders(true);
+    setFetchError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/orders`, {
+        headers: { Authorization: token ? `Bearer ${token}` : '' }
+      });
+      if (!res.ok) throw new Error('Failed to load orders');
+      const data = await res.json();
+      // Sort newest first
+      data.sort((a, b) => new Date(b.created_date || b.created_at).getTime() - new Date(a.created_date || a.created_at).getTime());
+      setOrders(data);
+    } catch (err) {
+      setFetchError(err.message);
+    } finally {
+      setLoadingOrders(false);
+    }
+  }, []);
 
-  useEffect(() => { loadOrders(); }, []);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
 
   const filtered = orders.filter(o => {
     const q = search.toLowerCase();
@@ -80,15 +102,27 @@ export default function OrderHistory() {
           ))}
           <button
             onClick={loadOrders}
-            className="px-2.5 py-1.5 bg-secondary border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            disabled={loadingOrders}
+            className="px-2.5 py-1.5 bg-secondary border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            {loadingOrders
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <RefreshCw className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
+      {/* Error Banner */}
+      {fetchError && (
+        <p className="text-destructive text-xs text-center py-2">{fetchError}</p>
+      )}
+
       {/* Order List */}
-      {filtered.length === 0 ? (
+      {loadingOrders ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-7 h-7 text-primary animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Package className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">No orders found</p>
