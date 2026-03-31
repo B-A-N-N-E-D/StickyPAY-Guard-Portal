@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, LogOut, Coins, History } from 'lucide-react';
 
 export default function GuardHeader({ guard, credits, onSignOut, activeTab, setActiveTab }) {
@@ -7,8 +7,8 @@ export default function GuardHeader({ guard, credits, onSignOut, activeTab, setA
       {/* StickyPAY Logo Row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 stickypay-logo-bg rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-black text-base">S</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-green-500 flex items-center justify-center">
+                            <span className="text-black font-bold text-sm">S</span>
           </div>
           <div className="flex items-baseline gap-0.5">
             <span className="text-white font-bold text-xl">Sticky</span>

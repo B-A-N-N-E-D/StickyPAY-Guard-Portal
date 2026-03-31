@@ -68,8 +68,8 @@ export default function GuardSignIn({ onSignIn }) {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center mb-10"
       >
-        <div className="w-16 h-16 stickypay-logo-bg rounded-2xl flex items-center justify-center shadow-2xl mb-4">
-          <span className="text-white font-black text-3xl">S</span>
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-400 to-green-500 flex items-center justify-center">
+                            <span className="text-black font-bold text-sm">S</span>
         </div>
         <div className="flex items-baseline gap-1">
           <span className="text-white font-bold text-3xl">Sticky</span>
