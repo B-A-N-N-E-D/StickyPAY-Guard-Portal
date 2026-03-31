@@ -71,10 +71,9 @@ export default function GuardSignIn({ onSignIn }) {
         <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-400 to-green-500 flex items-center justify-center">
                             <span className="text-black font-bold text-sm">S</span>
         </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-white font-bold text-3xl">Sticky</span>
-          <span className="text-primary font-black text-3xl">PAY</span>
-        </div>
+          <h1 className="text-xl font-bold text-white">
+              Sticky<span className="text-yellow-400">PAY</span>
+          </h1>
         <p className="text-muted-foreground text-sm mt-1">Security Guard Portal</p>
       </motion.div>
 
