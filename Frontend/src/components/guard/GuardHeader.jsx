@@ -10,11 +10,10 @@ export default function GuardHeader({ guard, credits, onSignOut, activeTab, setA
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-yellow-400 to-green-500 flex items-center justify-center">
                             <span className="text-black font-bold text-sm">S</span>
           </div>
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-white font-bold text-xl">Sticky</span>
-            <span className="text-primary font-black text-xl">PAY</span>
+              <h1 className="text-xl font-bold text-white">
+                  Sticky<span className="text-yellow-400">PAY</span>
+              </h1>
           </div>
-        </div>
 
         <div className="flex items-center gap-2">
           {/* Credits badge */}
